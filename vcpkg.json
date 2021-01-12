@@ -1,0 +1,15 @@
+{
+  "name": "tta-service",
+  "version-string": "0.0.1",
+  "description": "Time Tracking Activity Service",
+  "dependencies": [
+    "doctest",
+    "spdlog",
+    "fmt",
+    "date",
+    "tomlplusplus",
+    "sqlite-orm",
+    "boost-asio",
+    "boost-json"
+  ]
+}

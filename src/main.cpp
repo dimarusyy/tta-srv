@@ -1,5 +1,6 @@
 #include "logger.h"
 #include "config/config.h"
+#include "storage/storage.h"
 
 #include <iostream>
 
@@ -17,6 +18,9 @@ int main(int argc, char* argv[])
     // read config
     config_t cfg(argv[1]);
     
+    //init storage
+    storage_t storage(cfg.get_section("storage"));
+
 
     return 0;
 }

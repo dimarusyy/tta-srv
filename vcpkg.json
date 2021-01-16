@@ -10,6 +10,8 @@
     "tomlplusplus",
     "sqlite-orm",
     "boost-asio",
+    "boost-filesystem",
+    "boost-beast",
     "boost-json"
   ]
 }

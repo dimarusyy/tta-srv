@@ -10,10 +10,15 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "cmakeToolchain": "D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "cmakeToolchain": "D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake",      
       "variables": [
         {
           "name": "CMAKE_VERBOSE_MAKEFILE",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "VCPKG_VERBOSE",
           "value": "True",
           "type": "BOOL"
         }

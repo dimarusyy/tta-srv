@@ -26,7 +26,7 @@ public:
     virtual void connect(const std::string& host,
                          const std::string& port);
 
-    virtual void send(message::exchange_t&& msg);
+    virtual void send(model::exchange_t&& msg);
 
     void send(std::string&& data);
 

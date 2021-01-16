@@ -91,7 +91,7 @@ void wss_client_t::connect(const std::string& host,
     });
 }
 
-void wss_client_t::send(message::exchange_t&& msg)
+void wss_client_t::send(model::exchange_t&& msg)
 {
     const auto jv = json::value_from(msg);
     send(std::move(json::serialize(jv)));

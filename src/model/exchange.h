@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace message
+namespace model
 {
     struct exchange_t
     {

@@ -10,7 +10,7 @@ file(GLOB_RECURSE TTA_SRV_SOURCES $<$<VERSION_GREATER_EQUAL:${CMAKE_VERSION},3.1
 
 add_executable(${TTA_SRV_NAME} ${TTA_SRV_HEADERS} ${TTA_SRV_SOURCES})
 target_include_directories(${TTA_SRV_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(${TTA_SRV_NAME} PRIVATE tomlplusplus::tomlplusplus spdlog::spdlog sqlite_orm::sqlite_orm Boost::coroutine Boost::filesystem)
+target_link_libraries(${TTA_SRV_NAME} PRIVATE tomlplusplus::tomlplusplus spdlog::spdlog SQLiteCpp Boost::coroutine Boost::filesystem)
 
 add_custom_command(
         TARGET ${TTA_SRV_NAME} POST_BUILD

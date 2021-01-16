@@ -12,6 +12,7 @@
     "boost-asio",
     "boost-filesystem",
     "boost-beast",
-    "boost-json"
+    "boost-json",
+    "sqlitecpp"
   ]
 }

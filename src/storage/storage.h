@@ -32,8 +32,34 @@ public:
         }
     }
 
-    std::vector<model::exchange_t> get_range(std::chrono::time_point<std::chrono::system_clock> from, 
-                                             std::chrono::time_point<std::chrono::system_clock> to)
+    int insert(model::exchange_t&& msg)
+    {
+        int rc = 0;
+        try
+        {
+            rc = _db.insert(std::move(msg));
+        }
+        catch (const std::exception& ex)
+        {
+            SPDLOG_ERROR("exception [{}]", ex.what());
+        }
+        return rc;
+    }
+ 
+    void remove_by_id(std::size_t id)
+    {
+        try
+        {
+            _db.remove<model::exchange_t>(id);
+        }
+        catch (const std::exception& ex)
+        {
+            SPDLOG_ERROR("exception [{}]", ex.what());
+        }
+    }
+
+    std::vector<model::exchange_t> get_range(const std::chrono::time_point<std::chrono::system_clock>& from, 
+                                             const std::chrono::time_point<std::chrono::system_clock>& to)
     {
         try
         {
@@ -45,10 +71,11 @@ public:
         {
             SPDLOG_ERROR("exception [{}]", ex.what());
         }
+        return {};
     }
 
-    void remove_range(std::chrono::time_point<std::chrono::system_clock> from, 
-                      std::chrono::time_point<std::chrono::system_clock> to)
+    void remove_range(const std::chrono::time_point<std::chrono::system_clock>& from, 
+                      const std::chrono::time_point<std::chrono::system_clock>& to)
     {
         try
         {

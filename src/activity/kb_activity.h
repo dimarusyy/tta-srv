@@ -9,6 +9,8 @@ struct kb_activity_t : activity_t
     virtual void start() override;
     virtual void stop() override;
 
-private:
+    virtual void set_on_data(std::function<void(boost::json::value)>) override;
 
+private:
+    std::function<void(boost::json::value)> _on_data_handler;
 };

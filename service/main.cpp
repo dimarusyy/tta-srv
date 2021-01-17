@@ -23,9 +23,6 @@ int main(int argc, char* argv[])
     // read config
     config_t cfg(argv[1]);
 
-    //init storage
-    storage_t storage(cfg.get_section("storage"));
-
     boost::asio::io_context io;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work(io.get_executor());
 

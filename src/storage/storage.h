@@ -9,6 +9,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 namespace orm = sqlite_orm;
 
+#include <vector>
+#include <chrono>
+
 class storage_t
 {
     inline static const std::string DEFAULT_DB_NAME = "db.sqlite";
@@ -22,6 +25,36 @@ public:
         try
         {
             _db.sync_schema();
+        }
+        catch (const std::exception& ex)
+        {
+            SPDLOG_ERROR("exception [{}]", ex.what());
+        }
+    }
+
+    std::vector<model::exchange_t> get_range(std::chrono::time_point<std::chrono::system_clock> from, 
+                                             std::chrono::time_point<std::chrono::system_clock> to)
+    {
+        try
+        {
+            const std::size_t from_ms = std::chrono::duration_cast<std::chrono::milliseconds>(from.time_since_epoch()).count();
+            const std::size_t to_ms = std::chrono::duration_cast<std::chrono::milliseconds>(to.time_since_epoch()).count();
+            return _db.get_all<model::exchange_t>(orm::where(orm::between(&model::exchange_t::timestamp, from_ms, to_ms)));
+        }
+        catch (const std::exception& ex)
+        {
+            SPDLOG_ERROR("exception [{}]", ex.what());
+        }
+    }
+
+    void remove_range(std::chrono::time_point<std::chrono::system_clock> from, 
+                      std::chrono::time_point<std::chrono::system_clock> to)
+    {
+        try
+        {
+            const std::size_t from_ms = std::chrono::duration_cast<std::chrono::milliseconds>(from.time_since_epoch()).count();
+            const std::size_t to_ms = std::chrono::duration_cast<std::chrono::milliseconds>(to.time_since_epoch()).count();
+            _db.remove_all<model::exchange_t>(orm::where(orm::between(&model::exchange_t::timestamp, from_ms, to_ms)));
         }
         catch (const std::exception& ex)
         {

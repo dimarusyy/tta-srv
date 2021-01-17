@@ -12,9 +12,6 @@ find_package(tomlplusplus CONFIG REQUIRED)
 #sqlite_orm
 find_package(SqliteOrm CONFIG REQUIRED)
 
-#sqlitecpp
-find_package(SQLiteCpp CONFIG REQUIRED)
-
 #spdlog
 find_package(spdlog CONFIG REQUIRED)
 

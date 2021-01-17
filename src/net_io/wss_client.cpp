@@ -1,5 +1,4 @@
 #include <boost/json/src.hpp>
-
 #include "net_io/wss_client.h"
 
 #include "logger.h"

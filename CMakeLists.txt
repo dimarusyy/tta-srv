@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.12)
 set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 
 set(TTA_SRV_VERSION 0.0.1)
+set(TTA_LIB_NAME "tta")
 set(TTA_SRV_NAME "tta-service")
 
 project(tta-srv LANGUAGES CXX
@@ -16,6 +17,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(dependencies)
 
 add_subdirectory(src)
+add_subdirectory(service)
 
 #enable_testing()
 #add_subdirectory(tests)

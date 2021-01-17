@@ -8,12 +8,9 @@ file(GLOB_RECURSE TTA_SRV_SOURCES $<$<VERSION_GREATER_EQUAL:${CMAKE_VERSION},3.1
     ${CMAKE_SOURCE_DIR}/src/*.cpp
 )
 
-add_executable(${TTA_SRV_NAME} ${TTA_SRV_HEADERS} ${TTA_SRV_SOURCES})
-target_include_directories(${TTA_SRV_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(${TTA_SRV_NAME} PRIVATE tomlplusplus::tomlplusplus spdlog::spdlog sqlite_orm::sqlite_orm Boost::coroutine Boost::filesystem)
+add_library(${TTA_LIB_NAME} STATIC ${TTA_SRV_HEADERS} ${TTA_SRV_SOURCES})
+target_include_directories(${TTA_LIB_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(${TTA_LIB_NAME} PUBLIC tomlplusplus::tomlplusplus spdlog::spdlog sqlite_orm::sqlite_orm Boost::coroutine Boost::filesystem)
 
-add_custom_command(
-        TARGET ${TTA_SRV_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/tta-service.cfg
-                ${CMAKE_CURRENT_BINARY_DIR}/tta-service.cfg)
+set_property(TARGET ${TTA_LIB_NAME} PROPERTY
+             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")

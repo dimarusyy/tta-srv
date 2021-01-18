@@ -15,33 +15,36 @@ namespace websocket = boost::beast::websocket;
 //
 
 wss_client_t::wss_client_t(net::io_context& io)
-    : _io(io),
-    _resolver(net::make_strand(io)),
-    _ws(net::make_strand(io)),
-    _connect_timer(net::make_strand(io))
+    : _resolver(net::make_strand(io))
+    , _ws(net::make_strand(io))
 {
-}
-
-wss_client_t::~wss_client_t()
-{
-    _connect_timer.expires_at(std::chrono::steady_clock::time_point::min());
 }
 
 void wss_client_t::connect(const std::string& host,
-                           const std::string& port)
+                           const std::string& port,
+                           post_op_t handler)
 {
     net::spawn(
-        _io,
-        [host, port, this, self = shared_from_this()](net::yield_context yield) {
+        _ws.get_executor(),
+        [host, port, this, self = shared_from_this(), handler = std::move(handler)](net::yield_context yield) {
+        if (_state == state::connecting)
+        {
+            SPDLOG_INFO("ignoring as in [connecting] state");
+            return;
+        }
+        _state = state::connecting;
+
         SPDLOG_DEBUG("connecting to {}:{}", host, port);
         beast::error_code ec;
 
-        tcp::resolver resolver(_io);
+        tcp::resolver resolver(_ws.get_executor());
         // Look up the domain name
         auto const results = resolver.async_resolve(host, port, yield[ec]);
         if (ec)
         {
             SPDLOG_CRITICAL("Failed to resolve : {}", ec.message());
+            _state = state::disconnected;
+            handler(ec);
             return;
         }
 
@@ -53,6 +56,8 @@ void wss_client_t::connect(const std::string& host,
         if (ec)
         {
             SPDLOG_CRITICAL("Failed to connect, error : {}", ec.message());
+            _state = state::disconnected;
+            handler(ec);
             return;
         }
         SPDLOG_INFO("connected to {}, endpoint port {}", host, ep.port());
@@ -78,10 +83,16 @@ void wss_client_t::connect(const std::string& host,
         if (ec)
         {
             SPDLOG_CRITICAL("WSS handshake to connect : {}", ec.message());
+            _state = state::disconnected;
+            handler(ec);
             return;
         }
 
         SPDLOG_DEBUG("wss handshake succeded");
+
+        // update state
+        _state = state::connected;
+        handler(ec);
 
         // read the message
         _ws.async_read(
@@ -90,56 +101,43 @@ void wss_client_t::connect(const std::string& host,
     });
 }
 
-void wss_client_t::send(model::exchange_t&& msg)
+void wss_client_t::send(model::exchange_t&& msg, post_op_t handler)
 {
     const auto jv = json::value_from(msg);
-    send(std::move(json::serialize(jv)));
+    send(std::move(json::serialize(jv)), handler);
 }
 
-void wss_client_t::send(std::string&& data)
+void wss_client_t::send(std::string&& data, post_op_t handler)
 {
-    net::post(_ws.get_executor(), [this, self = shared_from_this(), data_to_send = std::move(data)]() {
-        if (_stop)
-            return;
-        _cache.emplace_back(std::move(data_to_send));
-    });
-
     net::spawn(
-        _io,
-        [this, self = shared_from_this()](net::yield_context yield) {
-        while (!_cache.empty() && !_stop)
+        _ws.get_executor(),
+        [this, self = shared_from_this(), data = std::move(data), handler](net::yield_context yield) mutable {
+        if (_stop)
         {
-            beast::error_code ec;
-            _ws.async_write(net::buffer(_cache.front()), yield[ec]);
+            SPDLOG_INFO("skipping send as shutting down");
+            return;
+        }
+
+        beast::error_code ec;
+        if (self->_state == state::connected)
+        {
+            _ws.async_write(net::buffer(data), yield[ec]);
+            handler(ec);
             if (!ec)
             {
-                // release sent data
-                self->_cache.pop_front();
-                continue;
+                return;
             }
-
-            // async_write failed, wait asynchronously until next attempt
-            SPDLOG_ERROR("wss async_write failed, waiting. error: {}", ec.message());
-
-            // cancel pending assync_wait() if any was done before
-            _connect_timer.expires_from_now(wss_config::send_retry_timeout());
-
-            // wait
-            _connect_timer.async_wait(yield[ec]);
-            if (ec == boost::asio::error::operation_aborted ||
-                self->_connect_timer.expires_at() == std::chrono::steady_clock::time_point::min())
-            {
-                SPDLOG_DEBUG("breaking async_write loop");
-                break;
-            }
+            // change state
+            self->_state = state::disconnected;
         }
-    });
-}
+        else
+        {
+            handler(boost::asio::error::try_again);
+        }
 
-net::executor
-wss_client_t::get_executor()
-{
-    return _io.get_executor();
+        // async_write failed, wait asynchronously until next attempt
+        SPDLOG_ERROR("wss async_write failed, error: {}", ec.message());
+    });
 }
 
 void wss_client_t::shutdown()
@@ -148,7 +146,7 @@ void wss_client_t::shutdown()
         SPDLOG_INFO("async_close, ec: [{}]", ec.message());
     });
 
-    net::post(_io, [this, self = shared_from_this()]() {
+    net::post(_ws.get_executor(), [this, self = shared_from_this()]() {
         _stop = true;
     });
 }

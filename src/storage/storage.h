@@ -32,6 +32,11 @@ public:
         }
     }
 
+    auto iterate()
+    {
+        return _db.iterate<model::exchange_t>();
+    }
+
     int insert(model::exchange_t&& msg)
     {
         int rc = 0;
@@ -57,38 +62,7 @@ public:
             SPDLOG_ERROR("exception [{}]", ex.what());
         }
     }
-
-    std::vector<model::exchange_t> get_range(const std::chrono::time_point<std::chrono::system_clock>& from, 
-                                             const std::chrono::time_point<std::chrono::system_clock>& to)
-    {
-        try
-        {
-            const std::size_t from_ms = std::chrono::duration_cast<std::chrono::milliseconds>(from.time_since_epoch()).count();
-            const std::size_t to_ms = std::chrono::duration_cast<std::chrono::milliseconds>(to.time_since_epoch()).count();
-            return _db.get_all<model::exchange_t>(orm::where(orm::between(&model::exchange_t::timestamp, from_ms, to_ms)));
-        }
-        catch (const std::exception& ex)
-        {
-            SPDLOG_ERROR("exception [{}]", ex.what());
-        }
-        return {};
-    }
-
-    void remove_range(const std::chrono::time_point<std::chrono::system_clock>& from, 
-                      const std::chrono::time_point<std::chrono::system_clock>& to)
-    {
-        try
-        {
-            const std::size_t from_ms = std::chrono::duration_cast<std::chrono::milliseconds>(from.time_since_epoch()).count();
-            const std::size_t to_ms = std::chrono::duration_cast<std::chrono::milliseconds>(to.time_since_epoch()).count();
-            _db.remove_all<model::exchange_t>(orm::where(orm::between(&model::exchange_t::timestamp, from_ms, to_ms)));
-        }
-        catch (const std::exception& ex)
-        {
-            SPDLOG_ERROR("exception [{}]", ex.what());
-        }
-    }
-
+  
 private:
     inline static auto make_db =
         [](const std::string& db_name, const std::string& table_name) {

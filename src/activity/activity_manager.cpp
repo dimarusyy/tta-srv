@@ -7,6 +7,7 @@
 
 activity_manager_t::activity_manager_t(net::io_context& io, const config_t& cfg)
     : _io(io)
+    , _cfg(cfg)
     , _push_timer(net::make_strand(io))
     , _wss_client(std::make_shared<wss_client_t>(io))
     , _storage(cfg.get_section("storage"))
@@ -27,14 +28,7 @@ activity_manager_t::activity_manager_t(net::io_context& io, const config_t& cfg)
         }
     }
 
-    // TODO : add other activity monitors    
-
-    auto geneal_cfg = cfg.get_section("general");
-    const std::string host = geneal_cfg["host"].value_or("");
-    const std::string port = geneal_cfg["port"].value_or("");
-
-    SPDLOG_INFO("connecting to [{}:{}]", host, port);
-    _wss_client->connect(host, port);
+    // TODO : add other activity monitors  
 }
 
 activity_manager_t::~activity_manager_t()
@@ -42,15 +36,31 @@ activity_manager_t::~activity_manager_t()
     _push_timer.expires_at(std::chrono::steady_clock::time_point::min());
 }
 
+void activity_manager_t::connect_impl()
+{
+    auto geneal_cfg = _cfg.get_section("general");
+    const std::string host = geneal_cfg["host"].value_or("");
+    const std::string port = geneal_cfg["port"].value_or("");
+
+    SPDLOG_INFO("connecting to [{}:{}]", host, port);
+    _wss_client->connect(host, port, [self = shared_from_this()](const boost::system::error_code& ec){
+        if (!ec)
+            self->send_cached_events();
+    });
+}
+
 void activity_manager_t::startup()
 {
+    // initiate connection
+    connect_impl();
+
+    // run periodic validation for event in a storage
+    // and send them
     net::spawn(_io,
                [self = shared_from_this()](net::yield_context yield)
     {
         while (!self->_stop)
         {
-            const auto now = std::chrono::system_clock::now();
-
             boost::system::error_code ec;
             self->_push_timer.expires_from_now(PUSH_TIMEOUT);
             self->_push_timer.async_wait(yield[ec]);
@@ -63,26 +73,8 @@ void activity_manager_t::startup()
                 break;
             }
 
-            // grab data from DB and push
-
-            const auto post_now = std::chrono::system_clock::now();
-
-            // query events
-            auto events = self->_storage.get_range(now, post_now);
-
-            SPDLOG_INFO("obtained [{}] events", events.size());
-
-            // traverse events and push for sending...
-            for (auto& event : events)
-            {
-                self->_wss_client->send(std::move(event));
-            }
-
-            // TODO : add continuation for exchange_t 
-            //        to delete from storage on successful push
-
-            // remove in range
-            self->_storage.remove_range(now, post_now);
+            // try to send...
+            self->send_cached_events();
         }
     });
 }
@@ -128,4 +120,57 @@ void activity_manager_t::update(const std::string& activity_name,
     }
 
     handler(it->second.get());
+}
+
+void activity_manager_t::send_cached_events()
+{
+    net::post(_io,
+              [self = shared_from_this()]()
+    {
+        if (self->_stop)
+        {
+            return;
+        }
+
+        if (self->_state == state::sending)
+        {
+            SPDLOG_INFO("state is [sending], ignoring");
+            return;
+        }
+
+        auto container = self->_storage.iterate();
+        auto it = container.begin();
+        if (it != container.end())
+        {
+            // update state as we are trying to send data
+            self->_state = state::sending;
+
+            auto event = *it;
+            self->_wss_client->send(std::move(event),
+                                    [id = event.id, self](const boost::system::error_code& ec)
+            {
+                if (!ec)
+                {
+                    SPDLOG_DEBUG("event with id [{}] was pushed", id);
+                    self->_storage.remove_by_id(id);
+
+                    // try next message
+                    self->send_cached_events();
+                }
+                else
+                {
+                    // update state to waiting as we should try to send after connect attempt
+                    self->_state = state::waiting;
+
+                    //needs reconnect
+                    self->connect_impl();
+                }
+            });
+        }
+        else
+        {
+            // update state until next send call
+            self->_state = state::waiting;
+        }
+    });
 }

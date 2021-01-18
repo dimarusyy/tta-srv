@@ -6,46 +6,41 @@
 #include <boost/beast/websocket.hpp>
 #include <boost/asio/deadline_timer.hpp>
 
-#include <deque>
-
-struct client_config_t
-{
-    std::string host;
-    std::string port;
-};
-
-struct exchange_t;
+#include <functional>
 
 class wss_client_t
     : public std::enable_shared_from_this<wss_client_t>
 {
+    enum class state
+    {
+        connecting,
+        connected,
+        disconnected
+    };
+
 public:
+    using post_op_t = std::function<void(const boost::system::error_code& ec)>;
+
     wss_client_t(net::io_context& io);
-    ~wss_client_t();
 
-    virtual void connect(const std::string& host,
-                         const std::string& port);
-
-    virtual void send(model::exchange_t&& msg);
-
-    void send(std::string&& data);
-
-    net::executor get_executor();
-
+    void connect(const std::string& host,
+                 const std::string& port,
+                 post_op_t handler = {});
     void shutdown();
 
+    virtual void send(model::exchange_t&& msg, post_op_t handler = {});
+    virtual void send(std::string&& data, post_op_t handler = {});
+
 protected:
-    void on_read(boost::beast::error_code ec, std::size_t size);
+    virtual void on_read(boost::beast::error_code ec, std::size_t size);
 
 private:
     bool _stop{ false };
+    state _state{ state::disconnected };
 
-    net::io_context& _io;
     tcp::resolver _resolver;
     boost::beast::websocket::stream<boost::beast::tcp_stream> _ws;
-    net::basic_waitable_timer<std::chrono::steady_clock> _connect_timer;
 
-    std::deque<std::string> _cache;
     boost::beast::flat_buffer _buffer;
 };
 

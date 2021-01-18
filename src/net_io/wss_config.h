@@ -5,7 +5,7 @@ namespace wss_config
 {
     constexpr auto connect_timeout()
     {
-        return std::chrono::seconds(30);
+        return std::chrono::seconds(5);
     }
 
     constexpr auto send_retry_timeout()

@@ -6,8 +6,8 @@
       "type": "default",
       "debugType": "mixed",
       "project": "CMakeLists.txt",
-      "projectTarget": "tta-service.exe (src\\tta-service.exe)",
-      "name": "tta-service.exe (src\\tta-service.exe)",
+      "projectTarget": "tta-service.exe (service\\tta-service.exe)",
+      "name": "tta-service.exe (service\\tta-service.exe)",
       "args": [ "tta-service.cfg" ]
     }
   ]
